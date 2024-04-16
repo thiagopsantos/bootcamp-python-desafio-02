@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 import bcrypt
 from flask_login import LoginManager, login_user, current_user, logout_user, login_required
+from datetime import datetime
 from models.user import User
 from models.meal import Meal
 from database import db
@@ -68,6 +69,51 @@ def get_user(user_id):
             }
         return jsonify({"message": "Usuário não encontrado "}), 404
     return jsonify({"message": "Operação não permitida"}), 403
+
+@app.route('/users/<int:user_id>/meals', methods=['GET'])
+@login_required
+def get_meals(user_id):
+    user = User.query.get(user_id)
+
+    if user:
+        if current_user.id == user.id or current_user.role == 'admin':
+            return {
+                "meals": [meal.to_dict() for meal in user.meals]
+            }
+        return  jsonify({"message": "Operação não autorizada"}), 403
+    return jsonify({"message": "Usuário não encontrado"}), 404
+
+@app.route('/meals', methods=['POST'])
+@login_required
+def create_meal():
+    data = request.get_json()
+    name = data.get("name")
+    description = data.get("description")
+    datetime_str = data.get("datetime")
+    datetime_object = datetime.strptime(datetime_str, "%Y-%m-%dT%H:%M:%S")
+    in_the_diet = data.get("in_the_diet", False)
+
+    if name and description and datetime_str:
+        meal = Meal(name=name,
+                    description=description,
+                    datetime=datetime_object,
+                    in_the_diet=in_the_diet,
+                    user=current_user)
+        db.session.add(meal)
+        db.session.commit()
+        return jsonify({"message": "Refeição criada com sucesso"}), 201
+    return jsonify({"message": "Dados inválidos"}), 400
+
+@app.route('/meals/<int:meal_id>', methods=['GET'])
+@login_required
+def get_meal(meal_id):
+    meal = Meal.query.get(meal_id)
+
+    if meal:
+        if current_user.id == meal.user.id or current_user.role == 'admin':
+            return meal.to_dict()
+        return  jsonify({"message": "Operação não autorizada"}), 403
+    return jsonify({"message": "Refeição não encontrada"}), 404
 
 if __name__ == '__main__':
     app.run(debug=True)
