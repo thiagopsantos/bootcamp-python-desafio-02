@@ -25,7 +25,7 @@ def create_user():
             user = User(username=username, password=password_hased, role='user')
             db.session.add(user)
             db.session.commit()
-            return jsonify({"message": "Usuário cadastrado com sucesso"})
+            return jsonify({"message": "Usuário cadastrado com sucesso"}), 201
         return jsonify({"message": "Nome de usuário não disponível"}), 400
     return jsonify({"message": "Dados inválidos"}), 400
 
