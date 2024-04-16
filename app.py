@@ -15,6 +15,10 @@ login_manager.init_app(app)
 
 login_manager.login_view = 'login'
 
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(user_id)
+
 @app.route('/login', methods=['POST'])
 def login():
     data = request.get_json()
@@ -27,6 +31,12 @@ def login():
             login_user(user)
             return jsonify({"message": "Autenticação realizada com sucesso"})
     return jsonify({"message": "Credenciais inválidas"}), 400
+
+@app.route('/logout', methods=['GET'])
+@login_required
+def logout():
+    logout_user()
+    return jsonify({"message": "Logout realizado com sucesso"})
 
 @app.route('/users', methods=['POST'])
 def create_user():
@@ -45,6 +55,19 @@ def create_user():
             return jsonify({"message": "Usuário cadastrado com sucesso"}), 201
         return jsonify({"message": "Nome de usuário não disponível"}), 400
     return jsonify({"message": "Dados inválidos"}), 400
+
+@app.route('/users/<int:user_id>', methods=['GET'])
+@login_required
+def get_user(user_id):
+    if current_user.id == user_id or current_user.role == 'admin':
+        user = User.query.get(user_id)
+        if user:
+            return {
+                "id": user.id,
+                "username": user.username
+            }
+        return jsonify({"message": "Usuário não encontrado "}), 404
+    return jsonify({"message": "Operação não permitida"}), 403
 
 if __name__ == '__main__':
     app.run(debug=True)
