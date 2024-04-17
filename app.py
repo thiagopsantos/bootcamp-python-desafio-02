@@ -1,7 +1,7 @@
+from datetime import datetime
 from flask import Flask, request, jsonify
 import bcrypt
 from flask_login import LoginManager, login_user, current_user, logout_user, login_required
-from datetime import datetime
 from models.user import User
 from models.meal import Meal
 from database import db
@@ -89,14 +89,13 @@ def create_meal():
     data = request.get_json()
     name = data.get("name")
     description = data.get("description")
-    datetime_str = data.get("datetime")
-    datetime_object = datetime.strptime(datetime_str, "%Y-%m-%dT%H:%M:%S")
+    datetime_str = data.get("datetime")    
     in_the_diet = data.get("in_the_diet", False)
 
     if name and description and datetime_str:
         meal = Meal(name=name,
                     description=description,
-                    datetime=datetime_object,
+                    datetime=datetime.strptime(datetime_str, "%Y-%m-%dT%H:%M:%S"),
                     in_the_diet=in_the_diet,
                     user=current_user)
         db.session.add(meal)
@@ -112,6 +111,42 @@ def get_meal(meal_id):
     if meal:
         if current_user.id == meal.user.id or current_user.role == 'admin':
             return meal.to_dict()
+        return  jsonify({"message": "Operação não autorizada"}), 403
+    return jsonify({"message": "Refeição não encontrada"}), 404
+
+@app.route('/meals/<int:meal_id>', methods=['PUT'])
+@login_required
+def update_meal(meal_id):
+    data = request.get_json()
+    name = data.get("name")
+    description = data.get("description")
+    datetime_str = data.get("datetime")
+    in_the_diet = data.get("in_the_diet", False)
+    meal = Meal.query.get(meal_id)
+
+    if meal:
+        if current_user.id == meal.user.id or current_user.role == 'admin':
+            if name and description and datetime_str:
+                meal.name = name
+                meal.description = description
+                meal.datetime = datetime.strptime(datetime_str, "%Y-%m-%dT%H:%M:%S")
+                meal.in_the_diet = in_the_diet
+                db.session.commit()
+                return jsonify({"message": "Refeição atualizada com sucesso"})
+            return jsonify({"message": "Dados inválidos"}), 400
+        return  jsonify({"message": "Operação não autorizada"}), 403
+    return jsonify({"message": "Refeição não encontrada"}), 404
+
+@app.route('/meals/<int:meal_id>', methods=['DELETE'])
+@login_required
+def delete_meal(meal_id):    
+    meal = Meal.query.get(meal_id)
+
+    if meal:
+        if current_user.id == meal.user.id or current_user.role == 'admin':
+            db.session.delete(meal)
+            db.session.commit()
+            return jsonify({"message": f"Refeição {meal.id} foi removida com sucesso"})
         return  jsonify({"message": "Operação não autorizada"}), 403
     return jsonify({"message": "Refeição não encontrada"}), 404
 
