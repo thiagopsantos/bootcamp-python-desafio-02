@@ -23,8 +23,8 @@ def load_user(user_id):
 @app.route('/login', methods=['POST'])
 def login():
     data = request.get_json()
-    username = data['username']
-    password = data['password']
+    username = data.get('username')
+    password = data.get('password')
 
     if username and password:
         user = User.query.filter_by(username=username).first()
@@ -42,8 +42,8 @@ def logout():
 @app.route('/users', methods=['POST'])
 def create_user():
     data = request.get_json()
-    username = data['username']
-    password = data['password']
+    username = data.get('username')
+    password = data.get('password')
 
     if username and password:
         user = User.query.filter_by(username=username).first()
